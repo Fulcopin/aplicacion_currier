@@ -2,8 +2,7 @@ const admin = require("firebase-admin");
 const dotenv = require('dotenv');
 dotenv.config();
 
-// Carga la configuración desde el archivo JSON
-const serviceAccount = require("../bd_firestore/clave.json");
+// Configuración de Firebase usando variables de entorno
 admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
