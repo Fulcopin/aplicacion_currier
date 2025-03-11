@@ -6,7 +6,11 @@ const  bcrypt= require("bcryptjs")
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
+const adminRouter=require('./routes/admin');
 app.use(express.json());
+/*Controlar Endpoints de usuario */
+/** Controlar Endpoints de administrador*/
+app.use('/admin',adminRouter);
 /*Verificar_usuario*/
 async function verificar_datos(email) {
     const user=await db.collection("Usuarios").where("email","==",email).get();
@@ -16,14 +20,16 @@ async function verificar_datos(email) {
         return false;
     }
 }
-async function Verifricar_usuario(email,password) {
+async function Verifricar_usuario(email,password) {/*Devuelve el Rol del usaurio*/ 
     const user =await db.collection("Usuarios").where("email","==",email).get();
     if (user.empty) {
         return false;
     } else {
         const userdata = user.docs[0].data();
         const isValidPassword = await bcrypt.compare(password, userdata.Contraseña);
-        return isValidPassword;
+        if(isValidPassword){
+            return userdata.Rol;
+        }
     }
     
 }
@@ -32,13 +38,23 @@ app.post("/Login", async function (req,res){
 let user=req.body.email;
 let password= req.body.password;
 if(!user || !password){
-    res.status(401).json({message:"Datos no propocrionados"})
+   return res.status(401).json({message:"Datos no proporcionados"})
 }
-if(Verifricar_usuario(user,password)){
+const rol=Verifricar_usuario(user,password)
+if(rol=="Cliente"){
     const token=jwt.sign({username:user},process.env.SECRET_KEY,{expiresIn:'1h'});
-    res.status(200).json({message:"Login Exitoso",token: token});
+   return res.status(200).json({message:"Login de cliente exitoso",token: token});
+}else{
+    if(rol=="Admin"){
+    const token=jwt.sign({username:user},process.env.SECRET_KEY_admin,{expiresIn:'1h'});
+   return res.status(200).json({message:"Login Exitoso",token: token});
+    }else{
+        return res.status(401).json({message:"Usuario no encotrado"}) ; 
+    }
 }
-});
+
+}
+);
 /*Resgister*/
 app.post("/register",async function (req,res) {
     let Nombre=req.body.nombre;
@@ -77,3 +93,4 @@ app.post("/register",async function (req,res) {
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
+
