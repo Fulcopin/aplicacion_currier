@@ -7,31 +7,34 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 const adminRouter=require('./routes/admin');
+const UserRoutes=require('./routes/User')
 app.use(express.json());
 /*Controlar Endpoints de usuario */
+app.use('/user',UserRoutes);
 /** Controlar Endpoints de administrador*/
 app.use('/admin',adminRouter);
 /*Verificar_usuario*/
 async function verificar_datos(email) {
     const user=await db.collection("Usuarios").where("email","==",email).get();
     if (user.empty) {
-        return true;
+        return false //el suaurio no existe
     } else {
-        return false;
+        return true; //el suario existe
     }
 }
-async function Verifricar_usuario(email,password) {/*Devuelve el Rol del usaurio*/ 
-    const user =await db.collection("Usuarios").where("email","==",email).get();
+async function Verifricar_usuario(email, password) {
+    const user = await db.collection("Usuarios").where("Email", "==", email).get();
     if (user.empty) {
-        return false;
+        return { isValid: false, rol: null , id:null};
     } else {
         const userdata = user.docs[0].data();
         const isValidPassword = await bcrypt.compare(password, userdata.Contraseña);
-        if(isValidPassword){
-            return userdata.Rol;
+        if (isValidPassword) {
+            return { isValid: true, rol: userdata.Rol, id:user.docs[0].id};
+        } else {
+            return { isValid: false, rol: null, id:null};
         }
     }
-    
 }
 /*Login */
 app.post("/Login", async function (req,res){
@@ -40,12 +43,15 @@ let password= req.body.password;
 if(!user || !password){
    return res.status(401).json({message:"Datos no proporcionados"})
 }
-const rol=Verifricar_usuario(user,password)
-if(rol=="Cliente"){
-    const token=jwt.sign({username:user},process.env.SECRET_KEY,{expiresIn:'1h'});
+const {valid,rol,id}= await Verifricar_usuario(user,password)
+if (valid) {
+    return res.status(401).json({ message: "Credenciales incorrectas" });
+}
+if(rol==="CLIENTE"){
+    const token=jwt.sign({id:id},process.env.SECRET_KEY,{expiresIn:'1h'});
    return res.status(200).json({message:"Login de cliente exitoso",token: token});
 }else{
-    if(rol=="Admin"){
+    if(rol==="ADMIN"){
     const token=jwt.sign({username:user},process.env.SECRET_KEY_admin,{expiresIn:'1h'});
    return res.status(200).json({message:"Login Exitoso",token: token});
     }else{
@@ -68,7 +74,7 @@ app.post("/register",async function (req,res) {
     if (!Nombre || !apellido || !email || !contraseña || !Direcccion || !Telefono || !ciudad || !Pais ) {
         return res.status(400).json({ message: "Datos no proporcionados" });
     }
-    if(verificar_datos(email)!=false){
+    if(await verificar_datos(email)){
         return res.status(400).json({ message: "Datos ya existentes" });
     }
     const hashinPass= await bcrypt.hash(contraseña,10);
