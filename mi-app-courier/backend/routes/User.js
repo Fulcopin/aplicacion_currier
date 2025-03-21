@@ -117,7 +117,13 @@ router_users.post('/RegistrarEnvio',async(req, res)=>{
     }
  
 })
-
-
-
+router_users.get('/MostrarEnvio', async(req,res)=>{
+    try{
+    const Envios=await db.collection("Envios").where("Id_user", "==", req.user.id).get();
+    const enviosList = enviosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return res.status(200).json(enviosList);
+    }catch(err){
+        return res.status(500).json({message:"Error al obtener",error: err.message})
+    }
+})
 module.exports=router_users;

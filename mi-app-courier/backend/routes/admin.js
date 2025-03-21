@@ -86,4 +86,25 @@ router_admin.post('/asignarArticulo', async (req, res) => {
     }
 });
 
+router_admin.get('/MostrarEnvio', async(req,res)=>{
+    try {
+        const Envios = await db.collection("Producto").get();
+        const ListaEnvios = Envios.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return res.status(200).json(ListaEnvios)
+        
+    } catch (error) {
+        return res.status(500).json({message:"Erroe al consultar los pedidos"})        
+    }
+    
+})
+router_admin.get('/MostarUsuarios',async(req,res)=>{
+    try {
+        const Usuarios = await db.collection("Usuarios").get();
+        const ListaUsuarios = Usuarios.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return res.status(200).json(ListaUsuarios)
+        
+    } catch (error) {
+        return res.status(500).json({message:"Erroe al consultar los usuarios"})        
+    }
+})
 module.exports=router_admin;
