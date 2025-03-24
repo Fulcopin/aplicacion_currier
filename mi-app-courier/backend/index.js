@@ -8,12 +8,16 @@ const app = express();
 const port = process.env.PORT || 3000;
 const adminRouter=require('./routes/admin');
 const UserRoutes=require('./routes/User')
+const cors = require('cors');
 app.use(express.json());
+app.use(cors());
 /*Controlar Endpoints de usuario */
 app.use('/user',UserRoutes);
 /** Controlar Endpoints de administrador*/
 app.use('/admin',adminRouter);
 /*Verificar_usuario*/
+
+
 async function verificar_datos(email) {
     const user=await db.collection("Usuarios").where("email","==",email).get();
     if (user.empty) {
@@ -100,3 +104,75 @@ app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
 
+// ...existing code...
+// Add after existing routes
+app.get("/validate", async function(req, res) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Remove 'Bearer ' prefix
+    
+    if (!token) {
+        return res.status(401).json({message: "Token no proporcionado"});
+    }
+    
+    try {
+        const decoded = jwt.verify(token, process.env.SECRET_KEY);
+        const userDoc = await db.collection("Usuarios").doc(decoded.id).get();
+        
+        if (!userDoc.exists) {
+            return res.status(401).json({message: "Usuario no encontrado"});
+        }
+        
+        const userData = userDoc.data();
+        return res.status(200).json({
+            id: userDoc.id,
+            nombre: userData.Nombre,
+            apellido: userData.Apellido,
+            email: userData.Email,
+            direccion: userData.Direccion,
+            telefono: userData.Telefono,
+            ciudad: userData.Ciudad,
+            pais: userData.Pais,
+            rol: userData.Rol
+        });
+    } catch (err) {
+        console.error('Token validation error:', err);
+        return res.status(403).json({message: "Token inválido"});
+    }
+});
+/* Get All Users */
+app.get("/users", async function(req, res) {
+    try {
+      const usersRef = db.collection("Usuarios");
+      const snapshot = await usersRef.get();
+      
+      if (snapshot.empty) {
+        return res.status(404).json({ message: "No se encontraron usuarios" });
+      }
+  
+      const users = [];
+      snapshot.forEach(doc => {
+        const userData = doc.data();
+        users.push({
+          id: doc.id,
+          nombre: userData.Nombre,
+          apellido: userData.Apellido,
+          email: userData.Email,
+          direccion: userData.Direccion,
+          telefono: userData.Telefono,
+          ciudad: userData.Ciudad,
+          pais: userData.Pais,
+          rol: userData.Rol
+        });
+      });
+  
+      return res.status(200).json(users);
+    } catch (error) {
+      console.error("Error al obtener usuarios:", error);
+      return res.status(500).json({ 
+        message: "Error al obtener usuarios", 
+        error: error.message 
+      });
+    }
+  });
+  
+  // ...existing code...

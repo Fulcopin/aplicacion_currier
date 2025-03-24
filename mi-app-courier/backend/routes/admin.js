@@ -37,7 +37,7 @@ router_admin.get('/almacenes', async (req, res) => {
         return res.status(500).json({ message: "Error al obtener almacenes", error: error.message });
     }
 });
-outer_admin.get('/envios', async (req, res) => {
+router_admin.get('/envios', async (req, res) => {
     try {
         const enviosSnapshot = await db.collection("Envios").get();
         const enviosList = enviosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

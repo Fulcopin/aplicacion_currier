@@ -6,39 +6,76 @@ const dotenv = require('dotenv');
 dotenv.config();
 const authenticateToken=require('../Middleware/User_auth');
 router_users.use(authenticateToken);
+const cors = require('cors');
+router_users.post('/RegistrarProducto', async (req, res) => {
+    let nombre = req.body.nombre;
+    let descripcion = req.body.descripcion;
+    let peso = req.body.peso;
+    let precio = req.body.precio;
+    let cantidad = req.body.cantidad;
+    let link = req.body.link;
+    let imagenUrl = req.body.imagenUrl;  // URL from Cloudinary
+    let facturaUrl = req.body.facturaUrl; // URL from Cloudinary
 
-router_users.post('/RegistrarProducto',async (req,ser)=>{
-    let nombre= req.body.nombre;
-    let descripccion=req.body.descripccion;
-    let peso=req.body.descripccion;
-    let precio=req.body.precio;
-    let cantidad=req.body.cantidad;
-    let link=req.body.link;
-    try{
-    const produref= await db.collection(Porducto).add({
-        Id_user: req.user.id,
-        Nombre:nombre,
-        Descripccion: descripccion,
-        Peso: peso,
-        Precio: precio,
-        Cantidad: cantidad,
-        Link: link
+    try {
+        const produref = await db.collection('Productos').add({
+            Id_user: req.user.id,
+            Nombre: nombre,
+            Descripcion: descripcion,
+            Peso: peso,
+            Precio: precio,
+            Cantidad: cantidad,
+            Link: link,
+            ImagenUrl: imagenUrl,
+            FacturaUrl: facturaUrl,
+            FechaCreacion: new Date()
+        });
 
-    })
-    return res.status(200).json({message: "producto agregado", Id: produref.id})
-}catch(error){
-    return res.status(400).json({ message: "Error al registrar producto", error: error.message });
-}
-    
+        return res.status(200).json({
+            message: "Producto agregado exitosamente",
+            id: produref.id,
+            imagenUrl,
+            facturaUrl
+        });
+    } catch (error) {
+        return res.status(400).json({
+            message: "Error al registrar producto",
+            error: error.message
+        });
+    }
 });
 /* Obtener todos los productos */
 router_users.get('/productos', async (req, res) => {
     try {
-        const productosSnapshot = await db.collection("Producto").where("Id_user","===",req.user.Id).get();
-        const productosList = productosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Fix collection name and operator
+        const productosSnapshot = await db.collection("Productos")
+            .where("Id_user", "==", req.user.id)
+            .get();
+
+        if (productosSnapshot.empty) {
+            return res.status(200).json([]);
+        }
+
+        const productosList = productosSnapshot.docs.map(doc => ({
+            id: doc.id,
+            nombre: doc.data().Nombre,
+            descripcion: doc.data().Descripcion,
+            peso: doc.data().Peso,
+            precio: doc.data().Precio,
+            cantidad: doc.data().Cantidad,
+            link: doc.data().Link,
+            imagenUrl: doc.data().ImagenUrl,
+            facturaUrl: doc.data().FacturaUrl,
+            fechaCreacion: doc.data().FechaCreacion?.toDate()
+        }));
+
         return res.status(200).json(productosList);
     } catch (error) {
-        return res.status(500).json({ message: "Error al obtener productos", error: error.message });
+        console.error('Error al obtener productos:', error);
+        return res.status(500).json({ 
+            message: "Error al obtener productos", 
+            error: error.message 
+        });
     }
 });
 /* Obtener un producto por ID */
