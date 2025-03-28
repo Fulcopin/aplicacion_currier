@@ -1,7 +1,7 @@
 const express = require('express');
 const jwt= require("jsonwebtoken");
 const dotenv = require('dotenv');
-const db= require("../backend/routes/conecction");
+const db= require("./routes/conecction");
 const  bcrypt= require("bcryptjs")
 dotenv.config();
 const app = express();
@@ -109,7 +109,6 @@ app.listen(port, () => {
 app.get("/validate", async function(req, res) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Remove 'Bearer ' prefix
-    
     if (!token) {
         return res.status(401).json({message: "Token no proporcionado"});
     }
@@ -120,8 +119,7 @@ app.get("/validate", async function(req, res) {
         
         if (!userDoc.exists) {
             return res.status(401).json({message: "Usuario no encontrado"});
-        }
-        
+        }  
         const userData = userDoc.data();
         return res.status(200).json({
             id: userDoc.id,
@@ -175,4 +173,4 @@ app.get("/users", async function(req, res) {
     }
   });
   
-  // ...existing code...
+ 

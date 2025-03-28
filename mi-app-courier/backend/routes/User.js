@@ -3,10 +3,11 @@ const router_users = express.Router();
 const bcrypt = require('bcryptjs');
 const db= require('./conecction')
 const dotenv = require('dotenv');
+const axios= require('axios');
 dotenv.config();
 const authenticateToken=require('../Middleware/User_auth');
-router_users.use(authenticateToken);
 const cors = require('cors');
+router_users.use(authenticateToken);
 router_users.post('/RegistrarProducto', async (req, res) => {
     let nombre = req.body.nombre;
     let descripcion = req.body.descripcion;
@@ -162,5 +163,55 @@ router_users.get('/MostrarEnvio', async(req,res)=>{
     }catch(err){
         return res.status(500).json({message:"Error al obtener",error: err.message})
     }
+})
+
+router_users.post('/GenerarPago',async (req,res)=>{
+    let Currency="USD";
+    let ClientTransactionID=req.body.ClientTransactionID
+    let amountWithTax=req.body.subtotal;
+    let Calculo_tax=(amountWithTax*0.15);
+    let tax=parseFloat(Calculo_tax.toFixed(2));
+    let amount=amountWithTax+tax
+    let reference="Pago con tarjeta";
+    let storeId="8928b5ff-a715-4ae8-a51d-cefa8b3cb1e9";
+    const data= {
+    clientTransactionId: ClientTransactionID,
+    storeId: storeId,
+    reference:reference,
+    currency:Currency,
+    amount: amount*100,
+    amountWithTax:amountWithTax*100,
+    tax:tax*100
+    }
+    try{ 
+        const token=process.env.TOKEN;
+        const response=await axios.post("https://pay.payphonetodoesposible.com/api/Links",data,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        
+    );
+        const { status, data: responseData } = response;
+        res.status(status).json({
+            message: "Pago generado exitosamente",
+            response: responseData
+        })
+       
+    }catch(err){
+        const status = err.response?.status || 500;
+        const message = err.response?.data?.errors || "Error al generar el pago";
+
+        res.status(status).json({
+            message: "Error al generar el pago",
+            error: message
+        });
+       
+    }
+
+
+
 })
 module.exports=router_users;
