@@ -29,42 +29,58 @@ async function verificar_datos(email) {
 async function Verifricar_usuario(email, password) {
     const user = await db.collection("Usuarios").where("Email", "==", email).get();
     if (user.empty) {
-        return { isValid: false, rol: null , id:null};
+        return { isValid: false, rol: null , id:null,direccion:null,ciudad:null,pais:null};
     } else {
         const userdata = user.docs[0].data();
         const isValidPassword = await bcrypt.compare(password, userdata.Contraseña);
         if (isValidPassword) {
-            return { isValid: true, rol: userdata.Rol, id:user.docs[0].id};
+            return { isValid: true, rol: userdata.Rol, id:user.docs[0].id,direccion:userdata.Direccion,ciudad:userdata.Ciudad,pais:userdata.Pais};
         } else {
-            return { isValid: false, rol: null, id:null};
+            return { isValid: false, rol: null, id:null,direccion:null,ciudad:null,pais:null};
         }
     }
 }
 /*Login */
+// Corrected backend code
 app.post("/Login", async function (req,res){
-let user=req.body.email;
-let password= req.body.password;
-if(!user || !password){
-   return res.status(401).json({message:"Datos no proporcionados"})
-}
-const {valid,rol,id}= await Verifricar_usuario(user,password)
-if (valid) {
-    return res.status(401).json({ message: "Credenciales incorrectas" });
-}
-if(rol==="CLIENTE"){
-    const token=jwt.sign({id:id},process.env.SECRET_KEY,{expiresIn:'1h'});
-   return res.status(200).json({message:"Login de cliente exitoso",token: token});
-}else{
-    if(rol==="ADMIN"){
-    const token=jwt.sign({username:user},process.env.SECRET_KEY_admin,{expiresIn:'1h'});
-   return res.status(200).json({message:"Login Exitoso",token: token});
-    }else{
-        return res.status(401).json({message:"Usuario no encotrado"}) ; 
+    let user = req.body.email;
+    let password = req.body.password;
+    
+    if(!user || !password){
+      return res.status(401).json({message:"Datos no proporcionados"})
     }
-}
+    
+    // Change 'valid' to 'isValid' to match your function
+    const {isValid, rol, id,direccion,ciudad,pais} = await Verifricar_usuario(user, password)
+    
+    // Change 'valid' to 'isValid' here too
+    if (!isValid) {
+      return res.status(401).json({ message: "Credenciales incorrectas" });
+    }
+    
+    if(rol === "CLIENTE"){
+      const token = jwt.sign({id: id}, process.env.SECRET_KEY, {expiresIn:'1h'});
+      return res.status(200).json({
+        message: "Login de cliente exitoso",
+        token: token,
+        id: id,
+        direccion:direccion,
+        ciudad:ciudad,
+        pais:pais,
+      });
+    } else if(rol === "ADMIN"){
+      const token = jwt.sign({id: id}, process.env.SECRET_KEY_admin, {expiresIn:'1h'});
+      return res.status(200).json({
+        message: "Login Exitoso", 
+        token: token,
+        id: id
+      });
+    } else {
+      return res.status(401).json({message: "Usuario no encontrado"});
+    }
+});
 
-}
-);
+
 /*Resgister*/
 app.post("/register",async function (req,res) {
     let Nombre=req.body.nombre;
@@ -92,7 +108,7 @@ app.post("/register",async function (req,res) {
         Telefono: Telefono,
         Ciudad: ciudad,
         Pais: Pais,
-        Rol:"CLIENTE"
+        Rol:"ADMIN"
     })
     return res.status(201).json({ message: "Usuario registrado" , UserId:userref.id});
  }catch(error){
@@ -108,18 +124,28 @@ app.listen(port, () => {
 // Add after existing routes
 app.get("/validate", async function(req, res) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Remove 'Bearer ' prefix
+    const token = authHeader && authHeader.split(' ')[1];
+    
     if (!token) {
         return res.status(401).json({message: "Token no proporcionado"});
     }
     
     try {
-        const decoded = jwt.verify(token, process.env.SECRET_KEY);
+        let decoded;
+        try {
+            // First try client token
+            decoded = jwt.verify(token, process.env.SECRET_KEY);
+        } catch {
+            // If client token fails, try admin token
+            decoded = jwt.verify(token, process.env.SECRET_KEY_admin);
+        }
+
         const userDoc = await db.collection("Usuarios").doc(decoded.id).get();
         
         if (!userDoc.exists) {
             return res.status(401).json({message: "Usuario no encontrado"});
-        }  
+        }
+        
         const userData = userDoc.data();
         return res.status(200).json({
             id: userDoc.id,
