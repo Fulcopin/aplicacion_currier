@@ -34,7 +34,7 @@ class CourierApp extends StatelessWidget {
         '/dashboard/almacen': (context) => const WarehouseScreen(),
         '/dashboard/clientes': (context) => const CustomersScreen(),
         '/dashboard/facturacion': (context) => const BillingScreen(),
-        '/dashboard/reportes': (context) => const ReportsScreen(),
+        
         '/dashboard/configuracion': (context) => const SettingsScreen(),
       },
     );

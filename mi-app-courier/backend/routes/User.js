@@ -625,5 +625,66 @@ router_users.post('/GenerarPago', async (req, res) => {
     }
 });
 
+
+// GET user statistics
+router_users.get('/stats/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+      console.log('Buscando estadísticas para usuario:', userId);
+      
+      if (!userId) {
+        console.error('ID de usuario no encontrado');
+        return res.status(400).json({
+          success: false,
+          message: "ID de usuario no proporcionado"
+        });
+      }
+      
+      // Obtener envíos del usuario
+      const shipmentsSnapshot = await db.collection("Envios")
+        .where("Id_user", "==", userId)
+        .get();
+      
+      const totalShipments = shipmentsSnapshot.size;
+      console.log(`Encontrados ${totalShipments} envíos para el usuario ${userId}`);
+      
+      // Resto del código...
+      
+      // Contar envíos en tránsito
+      let shipmentsInTransit = 0;
+      shipmentsSnapshot.forEach(doc => {
+        const status = doc.data().Estado?.toLowerCase();
+        if (status === 'en tránsito' || status === 'en transito') {
+          shipmentsInTransit++;
+        }
+      });
+      
+      // Calcular total gastado en pagos
+      const paymentsSnapshot = await db.collection("Pagos")
+      .where("Id_user", "==", userId)
+      .where("Estado", "in", ["Completado", "Aprobado"])
+      .get();
+      
+      let totalSpent = 0;
+      paymentsSnapshot.forEach(doc => {
+        totalSpent += Number(doc.data().Monto || 0);
+      });
+      
+      return res.status(200).json({
+        success: true,
+        totalShipments,
+        shipmentsInTransit,
+        totalSpent
+      });
+      
+    } catch (error) {
+      console.error('Error obteniendo estadísticas del usuario:', error);
+      return res.status(500).json({
+        success: false,
+        message: "Error al obtener estadísticas",
+        error: error.message
+      });
+    }
+  });
 module.exports = router_users;
 
