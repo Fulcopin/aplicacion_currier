@@ -29,14 +29,20 @@ async function verificar_datos(email) {
 async function Verifricar_usuario(email, password) {
     const user = await db.collection("Usuarios").where("Email", "==", email).get();
     if (user.empty) {
-        return { isValid: false, rol: null , id:null,direccion:null,ciudad:null,pais:null};
+        return { isValid: false, rol: null , id:null,direccion:null,ciudad:null,pais:null,nombre: null,
+          apellido: null,
+          telefono: null,};
     } else {
         const userdata = user.docs[0].data();
         const isValidPassword = await bcrypt.compare(password, userdata.Contraseña);
         if (isValidPassword) {
-            return { isValid: true, rol: userdata.Rol, id:user.docs[0].id,direccion:userdata.Direccion,ciudad:userdata.Ciudad,pais:userdata.Pais};
+            return { isValid: true, rol: userdata.Rol, id:user.docs[0].id,direccion:userdata.Direccion,ciudad:userdata.Ciudad,pais:userdata.Pais, nombre: userdata.Nombre,
+              apellido: userdata.Apellido,
+              telefono: userdata.Telefono,};
         } else {
-            return { isValid: false, rol: null, id:null,direccion:null,ciudad:null,pais:null};
+            return { isValid: false, rol: null, id:null,direccion:null,ciudad:null,pais:null, nombre: null,
+              apellido: null,
+              telefono: null,};
         }
     }
 }
@@ -51,7 +57,7 @@ app.post("/Login", async function (req,res){
     }
     
     // Change 'valid' to 'isValid' to match your function
-    const {isValid, rol, id,direccion,ciudad,pais} = await Verifricar_usuario(user, password)
+    const {isValid, rol, id, nombre, apellido, telefono, direccion, ciudad, pais} = await Verifricar_usuario(user, password)
     
     // Change 'valid' to 'isValid' here too
     if (!isValid) {
@@ -67,13 +73,19 @@ app.post("/Login", async function (req,res){
         direccion:direccion,
         ciudad:ciudad,
         pais:pais,
+        nombre: nombre,
+        apellido: apellido,
+        telefono: telefono,
       });
     } else if(rol === "ADMIN"){
       const token = jwt.sign({id: id}, process.env.SECRET_KEY_admin, {expiresIn:'1h'});
       return res.status(200).json({
         message: "Login Exitoso", 
         token: token,
-        id: id
+        id: id,
+        nombre: nombre,
+        apellido: apellido,
+        telefono: telefono,
       });
     } else {
       return res.status(401).json({message: "Usuario no encontrado"});
